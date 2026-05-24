@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="green_100">#00FF41</color>
+    <color name="green_90">#00E63B</color>
+    <color name="green_80">#00CC34</color>
+    <color name="green_60">#009927</color>
+    <color name="green_40">#00661A</color>
+    <color name="green_20">#00330D</color>
+    <color name="green_10">#001A06</color>
+
+    <color name="chat_bg">#000000</color>
+    <color name="background">#000000</color>
+
+    <color name="text_primary">#00FF41</color>
+    <color name="text_secondary">#4CFF41</color>
+    <color name="text_tertiary">#33FF41</color>
+    <color name="text_user">#99FF41</color>
+    <color name="text_ai">#00FF41</color>
+
+    <color name="bubble_border_user">#66FF41</color>
+    <color name="bubble_border_ai">#40FF41</color>
+    <color name="bubble_bg_user">#1AFF41</color>
+    <color name="bubble_bg_ai">#0DFF41</color>
+    <color name="divider">#26FF41</color>
+    <color name="status_bar_bg">#0AFF41</color>
+    <color name="status_dot">#00FF41</color>
+    <color name="scanline">#08FF41</color>
+    <color name="audio_bar">#33FF41</color>
+</resources>

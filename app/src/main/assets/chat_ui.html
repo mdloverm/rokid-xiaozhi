@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>J.A.R.V.I.S</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .title {
+    text-align: center;
+    color: rgba(0, 255, 65, 0.15);
+    font-size: 11px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    border: 1px solid rgba(0, 255, 65, 0.08);
+    background: rgba(0, 255, 65, 0.03);
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .status-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    background: #00FF41;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .status-text {
+    flex: 1;
+    margin-left: 8px;
+    color: #00FF41;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .vad-wave {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+    margin-right: 8px;
+  }
+
+  .vad-wave.visible { display: flex; }
+
+  .vad-wave span {
+    width: 2px;
+    background: rgba(0, 255, 65, 0.6);
+    animation: wave 0.8s ease-in-out infinite;
+  }
+
+  .vad-wave span:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .vad-wave span:nth-child(2) { height: 12px; animation-delay: 0.1s; }
+  .vad-wave span:nth-child(3) { height: 8px; animation-delay: 0.2s; }
+  .vad-wave span:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+  .vad-wave span:nth-child(5) { height: 10px; animation-delay: 0.4s; }
+  .vad-wave span:nth-child(6) { height: 14px; animation-delay: 0.15s; }
+  .vad-wave span:nth-child(7) { height: 5px; animation-delay: 0.25s; }
+
+  @keyframes wave {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .channel {
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border: 1px solid rgba(0, 255, 65, 0.1);
+  }
+
+  .chat-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    margin: 2px 0;
+  }
+
+  #chatMessages {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px;
+    scrollbar-width: none;
+  }
+
+  #chatMessages::-webkit-scrollbar { width: 2px; }
+  #chatMessages::-webkit-scrollbar-thumb { background: rgba(0, 255, 65, 0.2); }
+
+  .msg { display: none; }
+
+  .msg.user {
+    display: block;
+    align-self: flex-end;
+    max-width: 85%;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    background: rgba(0, 255, 65, 0.06);
+    color: rgba(0, 255, 65, 0.9);
+    animation: msg-in 0.3s ease-out;
+    word-break: break-word;
+  }
+
+  .msg.user::before { content: '> '; opacity: 0.5; }
+
+  .msg.ai {
+    display: block;
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: 0.5px;
+    color: #00FF41;
+    border-left: 2px solid rgba(0, 255, 65, 0.4);
+    background: linear-gradient(90deg, rgba(0, 255, 65, 0.04) 0%, transparent 100%);
+    animation: msg-in 0.3s ease-out;
+    word-break: break-word;
+  }
+
+  .msg.system {
+    display: block;
+    align-self: center;
+    color: rgba(0, 255, 65, 0.3);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 2px 0;
+    animation: msg-in 0.3s ease-out;
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .typing-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 13px;
+    background: #00FF41;
+    margin-left: 2px;
+    animation: blink 0.6s step-end infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .audio-visualizer {
+    display: none;
+    align-items: center;
+    padding: 6px 8px;
+    border-top: 1px solid rgba(0, 255, 65, 0.06);
+    margin-top: 4px;
+    gap: 8px;
+  }
+
+  .audio-visualizer.visible { display: flex; }
+
+  .audio-label {
+    color: rgba(0, 255, 65, 0.3);
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .audio-vis {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 20px;
+  }
+
+  .audio-vis .bar {
+    flex: 1;
+    background: rgba(0, 255, 65, 0.3);
+    min-height: 2px;
+    animation: audio-bar 1.2s ease-in-out infinite;
+  }
+
+  .audio-vis .bar:nth-child(1) { animation-delay: 0s; }
+  .audio-vis .bar:nth-child(2) { animation-delay: 0.08s; }
+  .audio-vis .bar:nth-child(3) { animation-delay: 0.16s; }
+  .audio-vis .bar:nth-child(4) { animation-delay: 0.24s; }
+  .audio-vis .bar:nth-child(5) { animation-delay: 0.32s; }
+  .audio-vis .bar:nth-child(6) { animation-delay: 0.40s; }
+  .audio-vis .bar:nth-child(7) { animation-delay: 0.12s; }
+  .audio-vis .bar:nth-child(8) { animation-delay: 0.20s; }
+  .audio-vis .bar:nth-child(9) { animation-delay: 0.28s; }
+  .audio-vis .bar:nth-child(10) { animation-delay: 0.36s; }
+  .audio-vis .bar:nth-child(11) { animation-delay: 0.44s; }
+  .audio-vis .bar:nth-child(12) { animation-delay: 0.04s; }
+
+  @keyframes audio-bar {
+    0%, 100% { height: 2px; opacity: 0.2; }
+    50% { height: 18px; opacity: 0.8; }
+  }
+
+  .audio-duration {
+    color: rgba(0, 255, 65, 0.3);
+    font-size: 8px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 5px;
+    margin-top: 4px;
+    border: 1px solid rgba(0, 255, 65, 0.04);
+    background: rgba(0, 255, 65, 0.02);
+  }
+
+  .speak-key {
+    display: inline-block;
+    padding: 2px 10px;
+    border: 1px solid rgba(0, 255, 65, 0.15);
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+
+  .hint-text {
+    color: rgba(0, 255, 65, 0.15);
+    font-size: 8px;
+    margin-top: 2px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="title">J.A.R.V.I.S</div>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <div class="status-text" id="statusText">Initializing...</div>
+  <div class="vad-wave" id="vadWave">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <span class="channel" id="channelLabel">CH.01</span>
+</div>
+
+<div class="chat-area">
+  <div id="chatMessages"></div>
+</div>
+
+<div class="audio-visualizer" id="audioVis">
+  <span class="audio-label">AUDIO IN</span>
+  <div class="audio-vis" id="audioBars">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+  <span class="audio-duration" id="audioDuration">00:00</span>
+</div>
+
+<div class="footer">
+  <div class="speak-key">[ SPEAK ]</div>
+  <div class="hint-text">voice activated · always listening</div>
+</div>
+
+<script>
+  var chatEl = document.getElementById('chatMessages');
+
+  function addMessage(type, text) {
+    var el = document.createElement('div');
+    el.className = 'msg ' + type;
+    el.textContent = text;
+    chatEl.appendChild(el);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    addMessage('system', text);
+  }
+
+  function setStatus(text) {
+    document.getElementById('statusText').textContent = text;
+  }
+
+  var cursorDiv = null;
+  var typeTimer = null;
+  var typeEl = null;
+  var typeFullText = '';
+  var typeIndex = 0;
+  var TYPE_SPEED = 45;
+  var typeCssClass = 'ai';
+
+  function startTyping(text, cssClass, speedMs) {
+    finishTyping();
+
+    typeFullText = text;
+    typeIndex = 0;
+    TYPE_SPEED = speedMs || 45;
+    typeCssClass = cssClass || 'ai';
+
+    typeEl = document.createElement('div');
+    typeEl.className = 'msg ' + typeCssClass;
+    typeEl.textContent = '';
+    chatEl.appendChild(typeEl);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    if (typeCssClass === 'ai') {
+      addCursor();
+    }
+
+    typeOneChar();
+  }
+
+  function appendTyping(text) {
+    if (typeEl && (typeTimer || typeIndex < typeFullText.length)) {
+      typeFullText += text;
+    } else {
+      startTyping(text, 'ai', 45);
+    }
+  }
+
+  function typeOneChar() {
+    if (!typeEl || typeIndex >= typeFullText.length) {
+      finishTyping();
+      return;
+    }
+    typeIndex++;
+    typeEl.textContent = typeFullText.substring(0, typeIndex);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    typeTimer = setTimeout(typeOneChar, TYPE_SPEED);
+  }
+
+  function finishTyping() {
+    if (typeTimer) {
+      clearTimeout(typeTimer);
+      typeTimer = null;
+    }
+    if (typeEl && typeIndex < typeFullText.length) {
+      typeEl.textContent = typeFullText;
+    }
+    typeEl = null;
+    typeFullText = '';
+    typeIndex = 0;
+    typeCssClass = 'ai';
+    removeCursor();
+  }
+
+  function addCursor() {
+    removeCursor();
+    cursorDiv = document.createElement('div');
+    cursorDiv.className = 'msg ai';
+    cursorDiv.style.padding = '0';
+    cursorDiv.style.borderLeft = 'none';
+    cursorDiv.style.background = 'none';
+    cursorDiv.style.minHeight = '14px';
+    var span = document.createElement('span');
+    span.className = 'typing-cursor';
+    cursorDiv.appendChild(span);
+    chatEl.appendChild(cursorDiv);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function removeCursor() {
+    if (cursorDiv && cursorDiv.parentNode) {
+      cursorDiv.parentNode.removeChild(cursorDiv);
+    }
+    cursorDiv = null;
+  }
+
+  function setVadVisible(visible) {
+    var w = document.getElementById('vadWave');
+    if (visible) {
+      w.classList.add('visible');
+    } else {
+      w.classList.remove('visible');
+    }
+  }
+
+  function setAudioVisVisible(visible) {
+    var a = document.getElementById('audioVis');
+    if (visible) {
+      a.classList.add('visible');
+    } else {
+      a.classList.remove('visible');
+    }
+  }
+</script>
+
+</body>
+</html>

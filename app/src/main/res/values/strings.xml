@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小智 AI</string>
+    <string name="status_connecting">连接中...</string>
+    <string name="status_connected">已连接</string>
+    <string name="status_disconnected">未连接</string>
+    <string name="status_listening">正在听...</string>
+    <string name="status_thinking">思考中...</string>
+    <string name="status_speaking">说话中...</string>
+    <string name="status_error">错误</string>
+    <string name="status_wifi_connecting">正在连接 WiFi...</string>
+    <string name="status_wifi_connected">WiFi 已连接</string>
+    <string name="status_wifi_disconnected">WiFi 未连接</string>
+    <string name="btn_start_voice">开始对话</string>
+    <string name="btn_stop_voice">结束对话</string>
+    <string name="btn_restart">重新开始</string>
+    <string name="btn_connecting">连接中...</string>
+    <string name="hint_press_to_talk">按住说话</string>
+    <string name="label_user">你说</string>
+    <string name="label_ai">AI</string>
+    <string name="chat_empty_hint">点击"开始对话"按钮开始语音交互</string>
+    <string name="msg_unknow">未知</string>
+</resources>
