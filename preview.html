@@ -294,7 +294,7 @@
 
 <div class="status-bar">
   <div class="status-dot" id="statusDot"></div>
-  <div class="status-text" id="statusText">Initializing...</div>
+  <div class="status-text" id="statusText">初始化中...</div>
   <div class="vad-wave" id="vadWave">
     <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
@@ -306,7 +306,7 @@
 </div>
 
 <div class="audio-visualizer" id="audioVis">
-  <span class="audio-label">AUDIO IN</span>
+  <span class="audio-label">音频输入</span>
   <div class="audio-vis" id="audioBars">
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
@@ -316,8 +316,8 @@
 </div>
 
 <div class="footer">
-  <div class="speak-key">[ SPEAK ]</div>
-  <div class="hint-text">voice activated · always listening</div>
+  <div class="speak-key">[ 按住说话 ]</div>
+  <div class="hint-text">语音激活 · 持续监听</div>
 </div>
 
 <script>
@@ -446,26 +446,26 @@
   // ==================== DEMO SCRIPT ====================
 
   var demoMessages = [
-    { type: 'system', text: 'System initialized', delay: 500 },
-    { type: 'status', text: 'Connected to server', delay: 1200 },
+    { type: 'system', text: '系统初始化完成', delay: 500 },
+    { type: 'status', text: '已连接服务器', delay: 1200 },
     { type: 'vad', visible: true, delay: 2000 },
-    { type: 'status', text: 'Listening...', delay: 2200 },
+    { type: 'status', text: '正在聆听...', delay: 2200 },
     { type: 'vad', visible: false, delay: 3000 },
-    { type: 'user', text: 'Hello, what can you do?', delay: 3500 },
-    { type: 'system', text: 'Processing voice...', delay: 4200 },
-    { type: 'ai', text: 'Hello! I am J.A.R.V.I.S, your AI assistant.', delay: 5000, speed: 50 },
-    { type: 'ai', text: 'I can help you with various tasks including answering questions, controlling smart devices, and having conversations.', delay: 7500, speed: 40 },
+    { type: 'user', text: '你好，你能做什么？', delay: 3500 },
+    { type: 'system', text: '正在处理语音...', delay: 4200 },
+    { type: 'ai', text: '你好！我是 J.A.R.V.I.S，你的 AI 助手。', delay: 5000, speed: 50 },
+    { type: 'ai', text: '我可以帮你完成各种任务，包括回答问题、控制智能设备、进行对话等。', delay: 7500, speed: 40 },
     { type: 'vad', visible: true, delay: 9500 },
-    { type: 'status', text: 'Speaking...', delay: 9700 },
+    { type: 'status', text: '播放中...', delay: 9700 },
     { type: 'vad', visible: false, delay: 11000 },
-    { type: 'system', text: 'Audio playback complete', delay: 11500 },
+    { type: 'system', text: '音频播放完成', delay: 11500 },
     { type: 'vad', visible: true, delay: 12500 },
-    { type: 'status', text: 'Listening...', delay: 12700 },
+    { type: 'status', text: '正在聆听...', delay: 12700 },
     { type: 'vad', visible: false, delay: 13500 },
-    { type: 'user', text: 'Tell me the weather', delay: 14000 },
-    { type: 'system', text: 'Fetching weather data...', delay: 15000 },
-    { type: 'ai', text: 'Current weather: Sunny, 24°C. Perfect day for a walk!', delay: 16000, speed: 45 },
-    { type: 'status', text: 'Ready', delay: 19000 },
+    { type: 'user', text: '今天天气怎么样？', delay: 14000 },
+    { type: 'system', text: '正在获取天气数据...', delay: 15000 },
+    { type: 'ai', text: '当前天气：晴天，24°C。非常适合散步！', delay: 16000, speed: 45 },
+    { type: 'status', text: '就绪', delay: 19000 },
   ];
 
   var demoIndex = 0;
