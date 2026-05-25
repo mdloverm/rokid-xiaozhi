@@ -3,18 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="screen-orientation" content="landscape">
+<meta name="orientation" content="landscape">
 <title>J.A.R.V.I.S - Preview</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  body {
+  html, body {
     background: #000;
     font-family: 'Courier New', monospace;
     overflow: hidden;
+    /* 横屏比例：16:9 */
+    aspect-ratio: 16 / 9;
     height: 100vh;
+    width: 100vw;
     display: flex;
     flex-direction: column;
     padding: 14px;
+    margin: 0 auto;
   }
 
   .title {
@@ -284,6 +290,40 @@
     padding: 4px 8px;
     letter-spacing: 2px;
   }
+
+  .activation-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+  }
+
+  .activation-title {
+    color: rgba(0, 255, 65, 0.5);
+    font-size: 10px;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+  }
+
+  .activation-code {
+    color: #00FF41;
+    font-size: 28px;
+    letter-spacing: 8px;
+    padding: 16px 32px;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    background: rgba(0, 255, 65, 0.05);
+    margin-bottom: 20px;
+  }
+
+  .activation-hint {
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-align: center;
+    line-height: 1.8;
+  }
 </style>
 </head>
 <body>
@@ -294,7 +334,7 @@
 
 <div class="status-bar">
   <div class="status-dot" id="statusDot"></div>
-  <div class="status-text" id="statusText">初始化中...</div>
+  <div class="status-text" id="statusText">System Initializing...</div>
   <div class="vad-wave" id="vadWave">
     <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
@@ -306,7 +346,7 @@
 </div>
 
 <div class="audio-visualizer" id="audioVis">
-  <span class="audio-label">音频输入</span>
+  <span class="audio-label">AUDIO IN</span>
   <div class="audio-vis" id="audioBars">
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
@@ -316,8 +356,8 @@
 </div>
 
 <div class="footer">
-  <div class="speak-key">[ 按住说话 ]</div>
-  <div class="hint-text">语音激活 · 持续监听</div>
+  <div class="speak-key">[ SPEAK ]</div>
+  <div class="hint-text">voice activated · always listening</div>
 </div>
 
 <script>
@@ -445,36 +485,72 @@
 
   // ==================== DEMO SCRIPT ====================
 
+  // 完整流程：首次使用激活 + 5段闲聊（6秒内完成）
   var demoMessages = [
-    { type: 'system', text: '系统初始化完成', delay: 500 },
-    { type: 'status', text: '已连接服务器', delay: 1200 },
-    { type: 'vad', visible: true, delay: 2000 },
-    { type: 'status', text: '正在聆听...', delay: 2200 },
-    { type: 'vad', visible: false, delay: 3000 },
-    { type: 'user', text: '你好，你能做什么？', delay: 3500 },
-    { type: 'system', text: '正在处理语音...', delay: 4200 },
-    { type: 'ai', text: '你好！我是 J.A.R.V.I.S，你的 AI 助手。', delay: 5000, speed: 50 },
-    { type: 'ai', text: '我可以帮你完成各种任务，包括回答问题、控制智能设备、进行对话等。', delay: 7500, speed: 40 },
-    { type: 'vad', visible: true, delay: 9500 },
-    { type: 'status', text: '播放中...', delay: 9700 },
-    { type: 'vad', visible: false, delay: 11000 },
-    { type: 'system', text: '音频播放完成', delay: 11500 },
-    { type: 'vad', visible: true, delay: 12500 },
-    { type: 'status', text: '正在聆听...', delay: 12700 },
-    { type: 'vad', visible: false, delay: 13500 },
-    { type: 'user', text: '今天天气怎么样？', delay: 14000 },
-    { type: 'system', text: '正在获取天气数据...', delay: 15000 },
-    { type: 'ai', text: '当前天气：晴天，24°C。非常适合散步！', delay: 16000, speed: 45 },
-    { type: 'status', text: '就绪', delay: 19000 },
+    // === 1. 权限检查 ===
+    { type: 'system', text: 'Checking permissions...', delay: 80 },
+    { type: 'system', text: 'Permissions granted', delay: 150 },
+
+    // === 2. WiFi 连接 ===
+    { type: 'system', text: 'WiFi connecting...', delay: 220 },
+    { type: 'system', text: 'WiFi Ready', delay: 350 },
+
+    // === 3. 获取配置 ===
+    { type: 'system', text: 'Fetching config...', delay: 400 },
+
+    // === 4. 首次激活 - 显示激活码 ===
+    { type: 'activation', code: 'ABC12345', delay: 480 },
+    { type: 'status', text: 'Waiting...', delay: 500 },
+
+    // === 5. 激活成功后连接 ===
+    { type: 'system', text: 'Activation success!', delay: 1200 },
+    { type: 'system', text: 'Connecting...', delay: 1350 },
+    { type: 'system', text: 'Session started', delay: 1500 },
+    { type: 'status', text: 'Listening...', delay: 1550 },
+
+    // === 第1段对话 ===
+    { type: 'vad', visible: true, delay: 1600 },
+    { type: 'vad', visible: false, delay: 1700 },
+    { type: 'user', text: '在吗？', delay: 1720 },
+    { type: 'ai', text: '在呢～有什么可以帮你的吗？', delay: 1800, speed: 5 },
+
+    // === 第2段对话 ===
+    { type: 'vad', visible: true, delay: 2100 },
+    { type: 'vad', visible: false, delay: 2200 },
+    { type: 'user', text: '今天心情不太好', delay: 2220 },
+    { type: 'ai', text: '怎么了？要不要说给我听听，也许我能帮你分散一下注意力。', delay: 2300, speed: 5 },
+
+    // === 第3段对话 ===
+    { type: 'vad', visible: true, delay: 2600 },
+    { type: 'vad', visible: false, delay: 2700 },
+    { type: 'user', text: '工作压力好大', delay: 2720 },
+    { type: 'ai', text: '深呼吸～工作只是生活的一部分，记得适时放松自己，你可以的！', delay: 2800, speed: 5 },
+
+    // === 第4段对话 ===
+    { type: 'vad', visible: true, delay: 3100 },
+    { type: 'vad', visible: false, delay: 3200 },
+    { type: 'user', text: '有什么好看的电影推荐吗', delay: 3220 },
+    { type: 'ai', text: '最近有部口碑很好的科幻片叫《星际穿越》，剧情很感人，你一定会喜欢的！', delay: 3300, speed: 5 },
+
+    // === 第5段对话 ===
+    { type: 'vad', visible: true, delay: 3600 },
+    { type: 'vad', visible: false, delay: 3700 },
+    { type: 'user', text: '推荐首歌来听听', delay: 3720 },
+    { type: 'ai', text: '给你推荐一首《夜空中最亮的星》，旋律很美，歌词也很有力量感。', delay: 3800, speed: 5 },
+
+    // === 结束 ===
+    { type: 'status', text: 'Listening...', delay: 4100 },
   ];
 
   var demoIndex = 0;
 
   function runDemo() {
     if (demoIndex >= demoMessages.length) {
-      setTimeout(runDemo, 3000);
-      demoIndex = 0;
-      chatEl.innerHTML = '';
+      setTimeout(function() {
+        chatEl.innerHTML = '';
+        demoIndex = 0;
+        runDemo();
+      }, 3000);
       return;
     }
 
@@ -487,10 +563,15 @@
       setStatus(msg.text);
     } else if (msg.type === 'vad') {
       setVadVisible(msg.visible);
+    } else if (msg.type === 'audio') {
+      setAudioVisVisible(msg.visible);
     } else if (msg.type === 'user') {
       addMessage('user', msg.text);
     } else if (msg.type === 'ai') {
       startTyping(msg.text, 'ai', msg.speed || 45);
+    } else if (msg.type === 'activation') {
+      // 显示激活码视图
+      chatEl.innerHTML = '<div class="activation-view"><div class="activation-title">DEVICE ACTIVATION</div><div class="activation-code">' + msg.code + '</div><div class="activation-hint">open xiaozhi.me in browser<br>enter the code to bind device<br>auto-connect after binding</div></div>';
     }
 
     setTimeout(runDemo, msg.delay);

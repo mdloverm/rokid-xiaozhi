@@ -20,8 +20,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.rokid.xiaozhi.audio.AudioService
+import com.rokid.xiaozhi.camera.CameraService
 import com.rokid.xiaozhi.core.DeviceManager
 import com.rokid.xiaozhi.network.XiaozhiWebSocketClient
+
 import com.rokid.xiaozhi.util.WifiManager
 import java.io.File
 import java.net.HttpURLConnection
@@ -32,12 +34,14 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val PERMISSION_REQUEST_CODE = 1001
+        private const val CAMERA_PERMISSION_REQUEST_CODE = 1002
     }
 
     private lateinit var webView: WebView
 
     private val audioService = AudioService()
     private val webSocket = XiaozhiWebSocketClient()
+    private val cameraService = CameraService()
     private val appCacheDir: File by lazy { applicationContext.cacheDir }
     private var isCapturing = false
     private var deviceMac = ""
@@ -96,10 +100,143 @@ class MainActivity : AppCompatActivity() {
         initWifi()
         startWifiKeepAlive()
         setupCallbacks()
+        setupCamera()
         requestPermissions()
     }
 
     inner class WebAppInterface {
+    }
+
+    private fun setupCamera() {
+        cameraService.onPhotoTaken = { uri ->
+            runOnUiThread {
+                showPhotoPreview(uri)
+                cameraService.closeCamera()
+            }
+        }
+
+        cameraService.onError = { error ->
+            runOnUiThread {
+                addSystemMessage("相机错误: $error")
+                setStatus("Listening...")
+            }
+        }
+
+        }
+
+    private fun handleVoiceCommand(text: String) {
+        Log.d(TAG, "handleVoiceCommand: $text")
+        if (text.contains("拍照") || text.contains("照相") || text.contains("拍一张")) {
+            Log.d(TAG, "检测到拍照指令")
+            requestCameraPermissionAndTakePhoto()
+        }
+    }
+
+    private fun showPhotoPreview(uri: android.net.Uri) {
+        Thread {
+            try {
+                val inputStream = contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes() ?: return@Thread
+                inputStream.close()
+                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                val dataUrl = "data:image/jpeg;base64,$base64"
+                val safeUrl = dataUrl.replace("'", "\\'")
+
+                mainHandler.post {
+                    js("""
+                        var oldOverlay = document.getElementById('photoPreviewOverlay');
+                        if (oldOverlay) oldOverlay.remove();
+
+                        var chatArea = document.getElementById('chatArea') || document.querySelector('.chat-area');
+                        if (!chatArea) chatArea = document.body;
+                        var rect = chatArea.getBoundingClientRect();
+
+                        var overlay = document.createElement('div');
+                        overlay.id = 'photoPreviewOverlay';
+                        var css = 'position: fixed;' +
+                            'top: ' + rect.top + 'px;' +
+                            'left: ' + rect.left + 'px;' +
+                            'width: ' + rect.width + 'px;' +
+                            'height: ' + rect.height + 'px;' +
+                            'background: rgba(0,0,0,0.95);' +
+                            'display: flex; flex-direction: column;' +
+                            'align-items: center; justify-content: center;' +
+                            'z-index: 1000;' +
+                            'border: 2px solid #00FF41;' +
+                            'box-shadow: 0 0 20px rgba(0,255,65,0.2);';
+                        overlay.style.cssText = css;
+
+                        var img = document.createElement('img');
+                        img.src = '$safeUrl';
+                        img.style.cssText = 'max-width: 85%; max-height: 65%; object-fit: contain; border-radius: 4px;';
+                        overlay.appendChild(img);
+
+                        var hint = document.createElement('div');
+                        hint.style.cssText = 'font-size: 12px; color: rgba(0,255,65,0.6); margin-top: 14px; letter-spacing: 2px;';
+                        hint.textContent = '3秒后返回...';
+                        overlay.appendChild(hint);
+
+                        var countdown = document.createElement('div');
+                        countdown.style.cssText = 'font-size: 36px; color: #00FF41; font-weight: bold; text-shadow: 0 0 20px rgba(0,255,65,0.8); margin-top: 6px;';
+                        countdown.textContent = '3';
+                        overlay.appendChild(countdown);
+
+                        document.body.appendChild(overlay);
+
+                        var count = 3;
+                        var timer = setInterval(function() {
+                            count--;
+                            if (count > 0) {
+                                countdown.textContent = count;
+                            } else {
+                                clearInterval(timer);
+                            }
+                        }, 1000);
+
+                        setTimeout(function() {
+                            var overlay = document.getElementById('photoPreviewOverlay');
+                            if (overlay) overlay.remove();
+                            addSystemMessage('拍照成功');
+                            setStatus('Listening...');
+                        }, 3000);
+                    """)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "读取照片失败", e)
+                mainHandler.post {
+                    addSystemMessage("照片读取失败")
+                    setStatus("Listening...")
+                }
+            }
+        }.apply { name = "photo-preview" }.start()
+    }
+
+    private fun requestCameraPermissionAndTakePhoto() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED) {
+            takePhoto()
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    private fun takePhoto() {
+        setStatus("Initializing camera...")
+        cameraService.onInitialized = {
+            Log.d(TAG, "相机初始化完成，开始拍照")
+            setStatus("Taking photo...")
+            cameraService.takePhoto(this@MainActivity)
+        }
+        cameraService.onError = { error ->
+            Log.e(TAG, "拍照失败: $error")
+            setStatus("Listening...")
+            Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+        }
+        cameraService.initialize(this, this)
     }
 
     private fun js(call: String) {
@@ -258,6 +395,7 @@ class MainActivity : AppCompatActivity() {
                         setStatus("Recognizing...")
                         val safe = text.replace("'", "\\'").replace("\n", " ")
                         js("startTyping('$safe', 'user', 30)")
+                        handleVoiceCommand(text)
                     }
                     "llm" -> addSystemMessage("thinking...")
                     "tts_sentence_end" -> {
@@ -271,7 +409,6 @@ class MainActivity : AppCompatActivity() {
                     "tts_stop" -> {
                         setStatus("Listening...")
                         addSystemMessage("complete")
-
                         audioService.onTtsStop()
                     }
                 }
@@ -349,26 +486,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showActivationCode(code: String, message: String?) {
         val safe = code.replace("'", "\\'").replace("\n", " ")
-        js("""
-            var c = document.getElementById('chatMessages');
-            c.innerHTML = '';
-            var el = document.createElement('div'); el.className = 'system';
-            el.textContent = 'DEVICE ACTIVATION';
-            el.style.fontSize = '12px'; el.style.marginTop = '40px';
-            c.appendChild(el);
-            el = document.createElement('div'); el.className = 'ai';
-            el.textContent = '$safe';
-            el.style.textAlign = 'center'; el.style.fontSize = '28px';
-            el.style.borderLeft = 'none'; el.style.padding = '16px';
-            c.appendChild(el);
-            el = document.createElement('div'); el.className = 'system';
-            el.textContent = 'open xiaozhi.me in browser';
-            c.appendChild(el);
-            el = document.createElement('div'); el.className = 'system';
-            el.textContent = 'auto-connect after binding';
-            el.style.opacity = '0.6';
-            c.appendChild(el);
-        """.trimIndent())
+        js("showActivation('$safe')")
         setStatus("Waiting...")
 
         Thread {
@@ -379,6 +497,7 @@ class MainActivity : AppCompatActivity() {
                     if (result.activation == null || result.activation.code == null) {
                         hasActivated = true
                         runOnUiThread {
+                            js("hideActivation()")
                             showChatView()
                             addSystemMessage("activation success! connecting...")
                             setStatus("Connecting...")
@@ -394,6 +513,7 @@ class MainActivity : AppCompatActivity() {
     private fun showChatView() {
         if (isChatActive) return
         isChatActive = true
+        js("hideActivation()")
         js("document.getElementById('chatMessages').innerHTML = ''")
         addSystemMessage("session started")
     }
@@ -409,6 +529,12 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(this, "需要录音权限", Toast.LENGTH_LONG).show()
             }
+        } else if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                takePhoto()
+            } else {
+                Toast.makeText(this, "需要相机权限", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -416,15 +542,17 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         unregisterWifiMonitor()
         wifiKeepAliveHandler.removeCallbacksAndMessages(null)
-        hasActivated = true // 阻止销毁后的激活轮询回调（避免在已销毁Activity上执行）
+        hasActivated = true
         webView.destroy()
         webSocket.disconnect()
         audioService.release()
+        cameraService.release()
     }
 
     override fun onBackPressed() {
         webSocket.disconnect()
         audioService.release()
+        cameraService.release()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             finishAndRemoveTask()
         } else {
@@ -438,6 +566,7 @@ class MainActivity : AppCompatActivity() {
         if (isFinishing) {
             webSocket.disconnect()
             audioService.release()
+            cameraService.release()
         }
     }
 }
