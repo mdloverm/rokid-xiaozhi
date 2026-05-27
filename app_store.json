@@ -1,0 +1,18 @@
+{
+  "apps": [
+    {
+      "name": "voiceinstall",
+      "displayName": "语音安装测试",
+      "url": "https://gitee.com/dlover1314/RokidBrew-Registry/releases/download/v0.1/voiceinstall-debug.apk",
+      "packageName": "com.rokid.voiceinstall",
+      "description": "DLOVER语音安装测试"
+    },
+    {
+      "name": "douyinwu",
+      "displayName": "老吴直播",
+      "url": "https://gitee.com/dlover1314/RokidBrew-Registry/releases/download/v0.1/Douyinwu.apk",
+      "packageName": "webapp.douyinlaowuzhibo",
+      "description": "老吴直播应用"
+    }
+  ]
+}
