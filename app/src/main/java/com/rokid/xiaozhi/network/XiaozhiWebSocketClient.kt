@@ -119,7 +119,7 @@ class XiaozhiWebSocketClient {
 
                     val response = client.newCall(request).execute()
                     val bodyStr = response.body?.string() ?: "{}"
-                    Log.d(TAG, "OTA 响应: $bodyStr")
+                    Log.d(TAG, "OTA config fetched successfully")
 
                     val json = JSONObject(bodyStr)
 
@@ -269,7 +269,7 @@ class XiaozhiWebSocketClient {
     }
 
     private fun handleTextMessage(text: String) {
-        Log.d(TAG, "收到消息: $text")
+        Log.d(TAG, "Received message")
         try {
             val json = JSONObject(text)
             when (json.optString("type")) {

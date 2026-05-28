@@ -23,8 +23,8 @@ import com.rokid.xiaozhi.audio.AudioService
 import com.rokid.xiaozhi.camera.CameraService
 import com.rokid.xiaozhi.core.DeviceManager
 import com.rokid.xiaozhi.network.XiaozhiWebSocketClient
-
 import com.rokid.xiaozhi.util.WifiManager
+import com.google.gson.Gson
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -53,6 +53,9 @@ class MainActivity : AppCompatActivity() {
     private var wifiSettingsOpened = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private val wifiKeepAliveHandler = Handler(Looper.getMainLooper())
+    private val appStoreManager = AppStoreManager(this)
+
+    private var apkInstaller: ApkInstaller? = null
 
     private val wifiNetworkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -97,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/chat_ui.html")
 
         setStatus("Initializing...")
+        loadAppStore()
         initWifi()
         startWifiKeepAlive()
         setupCallbacks()
@@ -105,6 +109,58 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class WebAppInterface {
+        @android.webkit.JavascriptInterface
+        fun installApp(appJson: String) {
+            Log.d(TAG, "JS installApp: $appJson")
+            try {
+                val app = Gson().fromJson(appJson, AppStoreItem::class.java)
+                mainHandler.post { startAppInstall(app) }
+            } catch (e: Exception) {
+                Log.d(TAG, "installApp解析失败: ${e.message}")
+            }
+        }
+    }
+
+    private fun loadAppStore() {
+        appStoreManager.load(object : AppStoreManager.Callback {
+            override fun onLoaded(apps: List<AppStoreItem>) {
+                Log.d(TAG, "应用商店已加载: ${apps.size} 个应用")
+                if (apps.isNotEmpty()) {
+                    addSystemMessage("应用商店已加载")
+                }
+            }
+            override fun onError(error: String) {
+                Log.d(TAG, "应用商店加载失败: $error")
+            }
+        })
+    }
+
+    private fun startAppInstall(app: AppStoreItem) {
+        Log.d(TAG, "startAppInstall: ${app.displayName}")
+        addSystemMessage("开始安装 ${app.displayName}")
+        pauseConversation()
+        apkInstaller = ApkInstaller(this)
+        apkInstaller?.start(app, object : ApkInstaller.Callback {
+            override fun onProgress(percent: Int, downloadedMb: String, totalMb: String) {
+                setStatus("下载中 $percent%")
+            }
+            override fun onMessage(message: String) {
+                addSystemMessage(message)
+            }
+            override fun onSuccess() {
+                setStatus("安装完成")
+                addSystemMessage("${app.displayName} 安装成功")
+                apkInstaller?.deleteApkFile()
+                Toast.makeText(this@MainActivity, "${app.displayName} 安装完成", Toast.LENGTH_LONG).show()
+                mainHandler.postDelayed({ resumeConversation() }, 1000)
+            }
+            override fun onError(error: String) {
+                setStatus("失败")
+                addSystemMessage("${app.displayName} $error")
+                Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
+                mainHandler.postDelayed({ resumeConversation() }, 1000)
+            }
+        })
     }
 
     private fun setupCamera() {
@@ -114,22 +170,98 @@ class MainActivity : AppCompatActivity() {
                 cameraService.closeCamera()
             }
         }
-
         cameraService.onError = { error ->
             runOnUiThread {
                 addSystemMessage("相机错误: $error")
                 setStatus("Listening...")
             }
         }
+        cameraService.initialize(this, this)
+    }
 
-        }
+    private fun pauseConversation() {
+        try { audioService.stopCapture() } catch (_: Exception) {}
+        try { webSocket.sendListenStop() } catch (_: Exception) {}
+    }
+
+    private fun resumeConversation() {
+        try { audioService.startCapture() } catch (_: Exception) {}
+    }
 
     private fun handleVoiceCommand(text: String) {
         Log.d(TAG, "handleVoiceCommand: $text")
-        if (text.contains("拍照") || text.contains("照相") || text.contains("拍一张")) {
+        val lower = text.lowercase()
+
+        if (lower.contains("拍照") || lower.contains("照相") || lower.contains("拍一张")) {
             Log.d(TAG, "检测到拍照指令")
             requestCameraPermissionAndTakePhoto()
+            return
         }
+
+        if (lower.contains("关闭") || lower.contains("close") || lower.contains("退出")) {
+            js("hideAppStore()")
+            addSystemMessage("关闭应用商店")
+            return
+        }
+
+        if (lower == "下一页" || lower.contains("翻页") || lower.contains("下一")) {
+            js("storeNextPage()")
+            return
+        }
+
+        if (lower == "上一页" || lower.contains("上一")) {
+            js("storePrevPage()")
+            return
+        }
+
+        if (lower.contains("应用商店") || lower.contains("打开商店") || lower.contains("app store")) {
+            Log.d(TAG, "检测到打开应用商店指令")
+            val apps = appStoreManager.cachedApps
+            if (apps.isEmpty()) {
+                addSystemMessage("应用商店加载中，请稍后再试")
+                appStoreManager.load(object : AppStoreManager.Callback {
+                    override fun onLoaded(apps: List<AppStoreItem>) {
+                        showStoreInWebView(apps)
+                    }
+                    override fun onError(error: String) {
+                        addSystemMessage("应用商店加载失败: $error")
+                    }
+                })
+            } else {
+                showStoreInWebView(apps)
+            }
+            return
+        }
+
+        if (lower.contains("安装")) {
+            val appName = lower.replace("安装", "").trim()
+            if (appName.isNotEmpty()) {
+                val app = appStoreManager.findByName(appName)
+                if (app != null) {
+                    Log.d(TAG, "从应用商店找到: ${app.displayName}")
+                    js("hideAppStore()")
+                    startAppInstall(app)
+                    return
+                }
+            }
+            if (lower.contains("测试")) {
+                Log.d(TAG, "检测到安装测试指令")
+                val testApp = appStoreManager.findByName("voiceinstall")
+                if (testApp != null) {
+                    startAppInstall(testApp)
+                } else {
+                    addSystemMessage("未找到 voiceinstall 应用")
+                }
+                return
+            }
+            addSystemMessage("未找到应用: $appName")
+            return
+        }
+    }
+
+    private fun showStoreInWebView(apps: List<AppStoreItem>) {
+        val json = Gson().toJson(apps)
+        js("showAppStore('$json')")
     }
 
     private fun showPhotoPreview(uri: android.net.Uri) {

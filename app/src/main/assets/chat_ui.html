@@ -273,6 +273,119 @@
     letter-spacing: 1px;
   }
 
+  .store-panel {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.97);
+    z-index: 100;
+    flex-direction: column;
+    padding: 8px;
+  }
+
+  .store-panel.visible { display: flex; }
+
+  .store-header {
+    text-align: center;
+    color: #00FF41;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+    margin-bottom: 8px;
+  }
+
+  .store-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
+  .store-card {
+    border: 1px solid rgba(0, 255, 65, 0.15);
+    background: rgba(0, 255, 65, 0.04);
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .store-card:focus,
+  .store-card.active {
+    border-color: #00FF41;
+    background: rgba(0, 255, 65, 0.12);
+    outline: none;
+  }
+
+  .store-card-name {
+    color: #00FF41;
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .store-card-desc {
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 9px;
+    line-height: 1.4;
+  }
+
+  .store-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px;
+    border-top: 1px solid rgba(0, 255, 65, 0.1);
+    margin-top: 6px;
+  }
+
+  .store-page {
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+
+  .store-nav {
+    display: flex;
+    gap: 8px;
+  }
+
+  .store-nav-btn {
+    padding: 4px 14px;
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    color: rgba(0, 255, 65, 0.6);
+    font-size: 9px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    background: transparent;
+    font-family: 'Courier New', monospace;
+  }
+
+  .store-nav-btn:focus,
+  .store-nav-btn.active {
+    border-color: #00FF41;
+    color: #00FF41;
+    background: rgba(0, 255, 65, 0.1);
+    outline: none;
+  }
+
+  .store-nav-btn:disabled {
+    opacity: 0.2;
+    cursor: default;
+  }
+
+  .store-close-hint {
+    color: rgba(0, 255, 65, 0.2);
+    font-size: 7px;
+    letter-spacing: 1px;
+    text-align: center;
+    padding: 4px;
+  }
+
 </style>
 </head>
 <body>
@@ -300,6 +413,19 @@
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <span class="audio-duration" id="audioDuration">00:00</span>
+</div>
+
+<div class="store-panel" id="storePanel">
+  <div class="store-header">APP STORE</div>
+  <div class="store-grid" id="storeGrid"></div>
+  <div class="store-footer">
+    <span class="store-page" id="storePage">PAGE 1/1</span>
+    <div class="store-nav">
+      <button class="store-nav-btn" id="storePrev">PREV</button>
+      <button class="store-nav-btn" id="storeNext">NEXT</button>
+    </div>
+  </div>
+  <div class="store-close-hint">SAY "CLOSE" TO EXIT</div>
 </div>
 
 <div class="footer">
@@ -459,6 +585,99 @@
     if (overlay) {
       overlay.style.display = 'none';
     }
+  }
+
+  var storeApps = [];
+  var storePage = 0;
+  var storePageSize = 10;
+
+  function showAppStore(appsJson) {
+    try {
+      storeApps = JSON.parse(appsJson);
+    } catch(e) {
+      storeApps = [];
+    }
+    storePage = 0;
+    document.getElementById('storePanel').classList.add('visible');
+    renderStorePage();
+  }
+
+  function hideAppStore() {
+    document.getElementById('storePanel').classList.remove('visible');
+    storeApps = [];
+  }
+
+  function storeNextPage() {
+    var maxPage = Math.max(0, Math.ceil(storeApps.length / storePageSize) - 1);
+    if (storePage < maxPage) {
+      storePage++;
+      renderStorePage();
+    }
+  }
+
+  function storePrevPage() {
+    if (storePage > 0) {
+      storePage--;
+      renderStorePage();
+    }
+  }
+
+  function renderStorePage() {
+    var grid = document.getElementById('storeGrid');
+    var pageLabel = document.getElementById('storePage');
+    var prevBtn = document.getElementById('storePrev');
+    var nextBtn = document.getElementById('storeNext');
+
+    var totalPages = Math.max(1, Math.ceil(storeApps.length / storePageSize));
+    pageLabel.textContent = 'PAGE ' + (storePage + 1) + '/' + totalPages;
+
+    var start = storePage * storePageSize;
+    var end = Math.min(start + storePageSize, storeApps.length);
+    var pageApps = storeApps.slice(start, end);
+
+    grid.innerHTML = '';
+    for (var i = 0; i < pageApps.length; i++) {
+      var app = pageApps[i];
+      var card = document.createElement('div');
+      card.className = 'store-card';
+      card.tabIndex = 0;
+      card.setAttribute('data-app-index', start + i);
+      card.innerHTML = '<div class="store-card-name">' + app.displayName + '</div><div class="store-card-desc">' + (app.description || '') + '</div>';
+      card.addEventListener('click', function() {
+        var idx = parseInt(this.getAttribute('data-app-index'));
+        storeInstallApp(storeApps[idx]);
+      });
+      card.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          var idx = parseInt(this.getAttribute('data-app-index'));
+          storeInstallApp(storeApps[idx]);
+        }
+      });
+      grid.appendChild(card);
+    }
+
+    if (pageApps.length > 0) {
+      var firstCard = grid.firstChild;
+      if (firstCard) setTimeout(function() { firstCard.focus(); }, 100);
+    }
+
+    prevBtn.disabled = storePage === 0;
+    nextBtn.disabled = storePage >= totalPages - 1;
+  }
+
+  function storeInstallApp(app) {
+    try {
+      Android.installApp(JSON.stringify(app));
+    } catch(e) {}
+  }
+
+  function getStoreAppNames() {
+    return JSON.stringify(storeApps.map(function(a) { return a.name; }));
+  }
+
+  function isStoreVisible() {
+    return document.getElementById('storePanel').classList.contains('visible');
   }
 </script>
 

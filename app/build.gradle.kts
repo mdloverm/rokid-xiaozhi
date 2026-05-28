@@ -21,6 +21,8 @@ android {
             storePassword = "rokidapp"
             keyAlias = "xiaozhi"
             keyPassword = "rokidapp"
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
